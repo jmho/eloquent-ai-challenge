@@ -1,0 +1,26 @@
+name: check-ai-agents
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    name: Lint Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: astral-sh/ruff-action@v3
+        with:
+          src: "services/server"
+          version: "latest"
+
+      - run: ruff check --fix
+      - run: ruff format
