@@ -6,22 +6,25 @@ import logging
 from functools import lru_cache
 
 from app.core.config import settings
-from services.server.app.services.retriever import PineconeRetriever
+from app.services.retriever import PineconeRetriever
 
 logger = logging.getLogger(__name__)
 
-search = PineconeRetriever(index=index, k=5)
-
-
 class RAG(dspy.Module):
-    def __init__(self):
+    def __init__(self, retriever):
         super().__init__()
+        self.retriever = retriever
         self.respond = dspy.ChainOfThought("context, question -> response")
 
     def forward(self, question: str):
-        context_passages = search(question).passages
+        retrieval_result = self.retriever(question, k=self.retriever.k)
+        context_passages = retrieval_result.passages
         context = "\n\n".join(context_passages)
-        return self.respond(context=context, question=question)
+        response = self.respond(context=context, question=question)
+        
+        # Include context metadata in the response
+        response.contexts = getattr(retrieval_result, 'contexts', [])
+        return response
 
 
 class RAGService:
@@ -41,51 +44,37 @@ class RAGService:
             )
         )
 
-        # Create DSPy signature for RAG
-        self.rag_signature = dspy.Signature("context, question -> answer")
+        # Initialize retriever and RAG module
+        self.retriever = PineconeRetriever(
+            index=self.index,
+            encoder=self.encoder,
+            k=settings.top_k_results,
+            threshold=settings.similarity_threshold
+        )
+        self.rag = RAG(self.retriever)
 
-    def encode_query(self, query: str) -> List[float]:
-        """Encode user query into vector representation"""
-        return self.encoder.encode(query).tolist()
-
-    def retrieve_context(self, query: str, top_k: int = None) -> List[Dict[str, Any]]:
-        """Retrieve relevant context from Pinecone vector database"""
-        if top_k is None:
-            top_k = settings.top_k_results
-
-        try:
-            query_vector = self.encode_query(query)
-
-            results = self.index.query(
-                vector=query_vector, top_k=top_k, include_metadata=True
-            )
-
-            contexts = []
-            for match in results["matches"]:
-                if match["score"] > settings.similarity_threshold:
-                    contexts.append(
-                        {
-                            "text": match["metadata"].get("text", ""),
-                            "category": match["metadata"].get("category", ""),
-                            "question": match["metadata"].get("question", ""),
-                            "score": match["score"],
-                        }
-                    )
-
-            return contexts
-
-        except Exception as e:
-            logger.error(f"Error retrieving context: {e}")
-            return []
 
     async def generate_response(
         self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Tuple[str, List[Dict[str, Any]], float]:
-        """Generate response using DSPy with retrieved context"""
+        """Generate response using DSPy RAG module"""
         try:
-            # Retrieve relevant context
-            contexts = self.retrieve_context(message)
+            # Prepare the question with conversation history if available
+            enhanced_question = message
+            if conversation_history:
+                history_text = "\n".join(
+                    [
+                        f"{msg['role']}: {msg['content']}"
+                        for msg in conversation_history[-3:]  # Last 3 messages for context
+                    ]
+                )
+                enhanced_question = f"Conversation History:\n{history_text}\n\nCurrent Question: {message}"
 
+            # Use DSPy RAG module to generate response
+            response = self.rag(enhanced_question)
+            
+            contexts = getattr(response, 'contexts', [])
+            
             if not contexts:
                 return (
                     "I apologize, but I don't have specific information about that topic. "
@@ -93,30 +82,6 @@ class RAGService:
                     [],
                     0.0,
                 )
-
-            # Prepare context for DSPy
-            context_text = "\n\n".join(
-                [
-                    f"Category: {ctx['category']}\nQ: {ctx['question']}\nA: {ctx['text']}"
-                    for ctx in contexts
-                ]
-            )
-
-            # Add conversation history if available
-            if conversation_history:
-                history_text = "\n".join(
-                    [
-                        f"{msg['role']}: {msg['content']}"
-                        for msg in conversation_history[
-                            -3:
-                        ]  # Last 3 messages for context
-                    ]
-                )
-                context_text = f"Conversation History:\n{history_text}\n\nKnowledge Base:\n{context_text}"
-
-            # Use DSPy to generate response
-            rag_module = dspy.Predict(self.rag_signature)
-            response = rag_module(context=context_text, question=message)
 
             # Calculate average confidence from context scores
             avg_confidence = (

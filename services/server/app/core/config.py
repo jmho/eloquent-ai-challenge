@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     api_description: str = "AI-powered chatbot service with RAG capabilities using DSPy"
     
     # CORS Settings
-    cors_origins: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins_str: str = "http://localhost:3000,http://localhost:5173"
+    
+    @property
+    def cors_origins(self) -> List[str]:
+        return [origin.strip() for origin in self.cors_origins_str.split(',')]
     
     # OpenAI Settings
     openai_api_key: str
