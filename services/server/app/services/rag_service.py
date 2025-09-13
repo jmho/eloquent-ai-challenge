@@ -6,29 +6,26 @@ import logging
 from functools import lru_cache
 
 from app.core.config import settings
-from app.services.retriever import PineconeRetriever
+from services.server.app.services.retriever import PineconeRetriever
 
 logger = logging.getLogger(__name__)
 
+search = PineconeRetriever(index=index, k=5)
+
 
 class RAG(dspy.Module):
-    def __init__(self, retriever):
+    def __init__(self):
         super().__init__()
-        self.retriever = retriever
         self.respond = dspy.ChainOfThought("context, question -> response")
 
     def forward(self, question: str):
-        retrieval_result = self.retriever(question)
-        context_passages = retrieval_result.passages
+        context_passages = search(question).passages
         context = "\n\n".join(context_passages)
-        response = self.respond(context=context, question=question)
-        
-        # Include context metadata in the response
-        response.contexts = getattr(retrieval_result, 'contexts', [])
-        return response
+        return self.respond(context=context, question=question)
 
 
 class RAGService:
+
     def __init__(self):
         # Initialize Pinecone
         self.pc = Pinecone(api_key=settings.pinecone_api_key)
@@ -44,14 +41,8 @@ class RAGService:
             )
         )
 
-        # Initialize retriever and RAG module
-        self.retriever = PineconeRetriever(
-            index=self.index,
-            encoder=self.encoder,
-            k=settings.top_k_results,
-            threshold=settings.similarity_threshold
-        )
-        self.rag = RAG(self.retriever)
+        # Create DSPy signature for RAG
+        self.rag_signature = dspy.Signature("context, question -> answer")
 
     def encode_query(self, query: str) -> List[float]:
         """Encode user query into vector representation"""
