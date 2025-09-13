@@ -15,3 +15,51 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id          String   @id @default(cuid())
+  sessionId   String?  @unique @map("session_id") // For anonymous users
+  workosId    String?  @unique @map("workos_id") // For authenticated users
+  email       String?  @unique // From WorkOS
+  isAnonymous Boolean  @default(true) @map("is_anonymous")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  chatSessions ChatSession[]
+
+  @@map("users")
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@map("chat_sessions")
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  chatSessionId String   @map("chat_session_id")
+  content       String
+  role          Role
+  contextUsed   String?  @map("context_used")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+enum Role {
+  user
+  assistant
+}
