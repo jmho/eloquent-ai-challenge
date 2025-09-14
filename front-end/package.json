@@ -7,9 +7,10 @@
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "generate-db": "prisma generate",
     "migrate": "prisma migrate dev",
-    "generate-client": "openapi-ts --input http://127.0.0.1:8000/openapi.json --output ./app/generated"
+    "generate": "pnpm run generate-db && pnpm run generate-client",
+    "generate-db": "prisma generate",
+    "generate-client": "openapi-ts --input http://127.0.0.1:8000/openapi.json --output ./app/generated/api"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
