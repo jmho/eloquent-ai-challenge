@@ -15,6 +15,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const { sessionId } = params;
   const { session, userId } = await requireSession(request);
 
+  // Handle the special "new" session ID
+  if (sessionId === "new") {
+    return {
+      chatSession: { id: "new", title: null, user_id: userId },
+      messages: [],
+      isNewSession: true,
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    };
+  }
+
   const chatSession = await getChatSession(sessionId, userId);
   if (!chatSession) {
     throw new Response("Chat session not found", { status: 404 });
@@ -25,6 +37,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return {
     chatSession,
     messages,
+    isNewSession: false,
     headers: {
       "Set-Cookie": await commitSession(session),
     },
@@ -37,9 +50,18 @@ export async function action({ params, request }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
-  const chatSession = await getChatSession(sessionId, userId);
-  if (!chatSession) {
-    throw new Response("Chat session not found", { status: 404 });
+  let actualSessionId = sessionId;
+  let chatSession;
+
+  // Handle creating a new session when sessionId is "new"
+  if (sessionId === "new") {
+    chatSession = await createChatSession(userId);
+    actualSessionId = chatSession.id;
+  } else {
+    chatSession = await getChatSession(sessionId, userId);
+    if (!chatSession) {
+      throw new Response("Chat session not found", { status: 404 });
+    }
   }
 
   if (intent === "send-message") {
@@ -50,7 +72,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
     // Save user message
     await createMessage({
-      chatSessionId: sessionId,
+      chatSessionId: actualSessionId,
       content: message,
       role: "user",
     });
@@ -79,7 +101,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
       // Save AI response
       await createMessage({
-        chatSessionId: sessionId,
+        chatSessionId: actualSessionId,
         content: aiResponse.response,
         role: "assistant",
         contextUsed: JSON.stringify(aiResponse.context_used),
@@ -89,19 +111,19 @@ export async function action({ params, request }: Route.ActionArgs) {
       if (!chatSession.title) {
         const title =
           message.length > 50 ? message.substring(0, 50) + "..." : message;
-        await updateChatSessionTitle(sessionId, title);
+        await updateChatSessionTitle(actualSessionId, title);
       }
     } catch (error) {
       console.error("AI service error:", error);
       await createMessage({
-        chatSessionId: sessionId,
+        chatSessionId: actualSessionId,
         content:
           "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
         role: "assistant",
       });
     }
 
-    return redirect(`/chat/${sessionId}`, {
+    return redirect(`/chat/${actualSessionId}`, {
       headers: {
         "Set-Cookie": await commitSession(session),
       },
@@ -121,7 +143,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 }
 
 export default function ChatSession({ loaderData }: Route.ComponentProps) {
-  const { chatSession, messages } = loaderData;
+  const { chatSession, messages, isNewSession } = loaderData;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -139,7 +161,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <h1 className="text-xl font-semibold text-gray-900">
-          {chatSession.title || "New Chat"}
+          {isNewSession ? "New Chat" : (chatSession.title || "New Chat")}
         </h1>
       </div>
 

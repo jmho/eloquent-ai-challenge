@@ -1,4 +1,4 @@
-import { Form } from "react-router";
+import { Link } from "react-router";
 
 export default function Chat() {
   return (
@@ -10,15 +10,12 @@ export default function Chat() {
         <p className="text-gray-600 mb-6">
           Select an existing chat or start a new conversation
         </p>
-        <Form method="post">
-          <input type="hidden" name="intent" value="new-chat" />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Start New Chat
-          </button>
-        </Form>
+        <Link
+          to="/chat/new"
+          className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Start New Chat
+        </Link>
       </div>
     </div>
   );
