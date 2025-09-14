@@ -29,7 +29,7 @@ class PineconeRetriever(dspy.Retrieve):
             texts = [texts]
         return [self.encoder.encode(text).tolist() for text in texts]
 
-    def forward(self, query: str, k: int, **kwargs) -> dspy.Prediction:
+    def forward(self, query: str, k: Optional[int] = None, **kwargs) -> dspy.Prediction:
         """Retrieve relevant passages from Pinecone"""
         try:
             qvec = self._embed([query])[0]
