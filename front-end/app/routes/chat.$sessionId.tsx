@@ -8,7 +8,7 @@ import {
   updateChatSessionTitle,
   createChatSession,
 } from "../lib/db/chat.server";
-import { redirect, Form } from "react-router";
+import { redirect, Form, data } from "react-router";
 import { useState, useEffect, useRef } from "react";
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -17,14 +17,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // Handle the special "new" session ID
   if (sessionId === "new") {
-    return {
-      chatSession: { id: "new", title: null, user_id: userId },
-      messages: [],
-      isNewSession: true,
-      headers: {
-        "Set-Cookie": await commitSession(session),
+    return data(
+      {
+        chatSession: { id: "new", title: null, user_id: userId },
+        messages: [],
+        isNewSession: true,
       },
-    };
+      {
+        headers: {
+          "Set-Cookie": await commitSession(session),
+        },
+      }
+    );
   }
 
   const chatSession = await getChatSession(sessionId, userId);
@@ -34,14 +38,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const messages = await getChatMessages(sessionId);
 
-  return {
-    chatSession,
-    messages,
-    isNewSession: false,
-    headers: {
-      "Set-Cookie": await commitSession(session),
+  return data(
+    {
+      chatSession,
+      messages,
+      isNewSession: false,
     },
-  };
+    {
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    }
+  );
 }
 
 export async function action({ params, request }: Route.ActionArgs) {

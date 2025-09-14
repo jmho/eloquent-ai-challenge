@@ -1,5 +1,5 @@
 import type { Route } from "./+types/chat-layout";
-import { Outlet, Link } from "react-router";
+import { Outlet, Link, data } from "react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,14 +16,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     await requireSession(request);
   const chatSessions = await getChatSessions(userId);
 
-  return {
-    chatSessions,
-    user,
-    isAuthenticated,
-    headers: {
-      "Set-Cookie": await commitSession(session),
+  return data(
+    {
+      chatSessions,
+      user,
+      isAuthenticated,
     },
-  };
+    {
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    }
+  );
 }
 
 
