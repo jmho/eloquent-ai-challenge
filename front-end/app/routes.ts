@@ -6,6 +6,7 @@ export default [
   // Authentication routes
   route("auth/login", "routes/auth.login.ts"),
   route("auth/callback", "routes/auth.callback.ts"),
+  route("auth/logout", "routes/auth.logout.ts"),
 
   // Chat routes with layout
   layout("routes/chat-layout.tsx", [
