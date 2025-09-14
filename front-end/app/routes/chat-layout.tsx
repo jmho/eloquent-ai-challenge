@@ -6,21 +6,52 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { requireSession } from "../lib/session/auth.server";
+import {
+  requireSession,
+  authenticateWithMigration,
+} from "../lib/session/auth.server";
 import { commitSession } from "../lib/session/cookie.server";
+import { authkitLoader } from "@workos-inc/authkit-react-router";
 import { getChatSessions } from "../lib/db/chat.server";
 import { LogOut } from "lucide-react";
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const { session, userId, user, isAuthenticated } =
+export const loader = async (args: Route.LoaderArgs) => {
+  const { request } = args;
+
+  const response = await authkitLoader(args, async ({ auth }) => auth.user);
+
+  const workosUser = response.data;
+
+  let { session, userId, user, isAuthenticated } =
     await requireSession(request);
+
+  // If WorkOS user exists but doesn't match cookie session, perform migration
+  if (
+    workosUser.user &&
+    (!isAuthenticated || user.workos_id !== workosUser.id)
+  ) {
+    console.log(
+      "WorkOS/cookie session mismatch detected, performing migration"
+    );
+
+    const migrationResult = await authenticateWithMigration(
+      request,
+      workosUser.id,
+      workosUser.email
+    );
+
+    // Update session and user info with migrated data
+    session = migrationResult.session;
+    userId = migrationResult.user.id;
+    user = migrationResult.user;
+  }
+
   const chatSessions = await getChatSessions(userId);
 
   return data(
     {
-      chatSessions,
       user,
-      isAuthenticated,
+      chatSessions,
     },
     {
       headers: {
@@ -28,11 +59,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       },
     }
   );
-}
-
+};
 
 export default function ChatLayout({ loaderData }: Route.ComponentProps) {
-  const { chatSessions, user, isAuthenticated } = loaderData;
+  const { user, chatSessions } = loaderData;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -71,7 +101,7 @@ export default function ChatLayout({ loaderData }: Route.ComponentProps) {
 
         {/* User Profile Section */}
         <div className="p-4 border-t border-gray-200">
-          {isAuthenticated ? (
+          {user.workos_id ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="w-full flex gap-2 items-center rounded-lg hover:bg-gray-50 transition-colors">

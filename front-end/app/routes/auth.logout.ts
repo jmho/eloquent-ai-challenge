@@ -1,5 +1,5 @@
 import type { Route } from "./+types/auth.logout";
-import { signOut } from "@workos-inc/authkit-remix";
+import { signOut } from "@workos-inc/authkit-react-router";
 import { getSession, destroySession } from "../lib/session/cookie.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
