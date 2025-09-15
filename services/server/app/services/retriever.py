@@ -1,3 +1,4 @@
+ 
 import logging
 from typing import List, Optional
 
@@ -20,49 +21,84 @@ class PineconeRetriever(dspy.Retrieve):
     Uses SentenceTransformers for embedding generation.
     """
 
-    def __init__(self, k=5, threshold=0.7):
+    def __init__(self, k: int = 5, threshold: float = 0.7, namespace: str = "__default__"):
         super().__init__(k=k)
         self.threshold = threshold
-        self.pc = Pinecone(api_key=settings.pinecone_api_key)
-        self.index = self.pc.Index(settings.pinecone_index_name)
+        self.namespace = namespace
+
+        # Save only lightweight config you need to rebuild the client later.
+        self._config = {
+            "index_name": settings.pinecone_index_name,
+            "namespace": self.namespace,
+            "k": self.k,
+            "threshold": self.threshold,
+        }
+
+        self._pc = Pinecone(api_key=settings.pinecone_api_key)
+        self._index = self._pc.Index(self._config["index_name"])
 
     def forward(self, query: str, k: Optional[int] = None, **kwargs) -> dspy.Prediction:
-        """Retrieve relevant passages from Pinecone"""
         try:
-            reranked_results = self.index.search(
-                namespace="__default__",
-                query=SearchQuery(
-                    inputs={
-                        'text': query
-                    },
-                    top_k=k or self.k,
-                ),
-                rerank=SearchRerank(
-                    model="bge-reranker-v2-m3",
-                    rank_fields=["text"],
-                ) 
-            )
+            rr = self._index.search(
+                namespace=self.namespace,
+                query=SearchQuery(inputs={'text': query}, top_k=k or self.k),
+                rerank=SearchRerank(model="pinecone-rerank-v0", rank_fields=["text"])
+            ).to_dict()
 
-            # Extract hits from the search response
-            response_dict = reranked_results.to_dict()
-            hits = response_dict.get("result", {}).get("hits", [])
-            
-            # Serialize hits into SearchResult objects
+            hits = rr.get("result", {}).get("hits", [])
             matches: List[SearchResult] = []
-            for hit in hits:
-                match = SearchResult(
-                    id=hit.get("_id"),
-                    score=hit.get("_score", 0.0),
-                    text=hit.get("fields", {}).get("text", ""),
-                    category=hit.get("fields", {}).get("category", "")
+            passages: List[str] = []
+
+            for h in hits:
+                fields = h.get("fields", {}) or {}
+                sr = SearchResult(
+                    id=h.get("_id"),
+                    score=h.get("_score", 0.0),
+                    text=fields.get("text", ""),
+                    category=fields.get("category", "")
                 )
-                matches.append(match)
+                if sr.score >= self.threshold:
+                    matches.append(sr)
+                    passages.append(sr.text)
 
-            # Filter results based on similarity threshold
-            filtered_results = [res for res in matches if res.score >= self.threshold]
-
-            return dspy.Prediction(results=filtered_results)
+            return dspy.Prediction(passages=passages, results=matches)
 
         except Exception as e:
-            logger.error(f"Error in PineconeRetriever: {e}")
-            return dspy.Prediction(results=[])
+            logger.error(f"PineconeRetriever error: {e}")
+            return dspy.Prediction(passages=[], results=[])
+
+    # ----- Copy / serialization hooks -----
+    def dump_state(self, json_mode: bool = False):
+        """Return ONLY lightweight, JSON-serializable config."""
+        return {"config": self._config}
+
+    def load_state(self, state):
+        """Rebuild clients from config after load."""
+        cfg = (state or {}).get("config", None)
+        if cfg:
+            self._config.update(cfg)
+            self.k = int(self._config.get("k", self.k))
+            self.threshold = float(self._config.get("threshold", self.threshold))
+            self.namespace = self._config.get("namespace", self.namespace)
+            # Recreate clients:
+            self._init_clients()
+        return None
+
+    def __deepcopy__(self, memo):
+        """Avoid deepcopying network clients; return self (safe for DSPy)."""
+        return self
+
+    def __getstate__(self):
+        return {"config": self._config}
+
+    def __setstate__(self, state):
+        self._config = state.get("config", {})
+        self.k = int(self._config.get("k", 5))
+        self.threshold = float(self._config.get("threshold", 0.7))
+        self.namespace = self._config.get("namespace", "__default__")
+        self._init_clients()
+
+    # ----- Internals -----
+    def _init_clients(self):
+        self._pc = Pinecone(api_key=settings.pinecone_api_key)
+        self._index = self._pc.Index(self._config["index_name"])

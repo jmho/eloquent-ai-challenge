@@ -1,0 +1,60 @@
+{
+  "_retriever": {
+    "config": {
+      "index_name": "ai-powered-chatbot-challenge",
+      "namespace": "__default__",
+      "k": 5,
+      "threshold": 0.7
+    }
+  },
+  "respond.predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "context": "",
+        "question": "Can I schedule a future transfer?",
+        "reasoning": "The ability to schedule future transfers depends on the features offered by the financial platform or bank in question. Many modern banking platforms do offer the option to schedule transfers for a future date, allowing users to plan their finances more effectively. This feature is typically found in the transfer or payments section of the platform.",
+        "response": "Yes, most platforms allow you to schedule a future transfer. You can usually find this option in the transfer or payments section of your account. Simply select the date you wish the transfer to occur."
+      },
+      {
+        "question": "What is biometric login and should I enable it?",
+        "response": "Biometric login lets you use Face ID or fingerprint recognition to sign in quickly. It is secure and recommended for convenience and added protection."
+      },
+      {
+        "question": "The app is not sending push notifications. How do I fix this?",
+        "response": "Check that notifications are enabled in your phone’s settings and in-app preferences. Ensure you have a stable internet connection. If issues persist, log out and back in or reinstall the app."
+      }
+    ],
+    "signature": {
+      "instructions": "Given the fields `context`, `question`, produce the fields `response`.",
+      "fields": [
+        {
+          "prefix": "Context:",
+          "description": "${context}"
+        },
+        {
+          "prefix": "Question:",
+          "description": "${question}"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Response:",
+          "description": "${response}"
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.0.3",
+      "cloudpickle": "3.1"
+    }
+  }
+}
