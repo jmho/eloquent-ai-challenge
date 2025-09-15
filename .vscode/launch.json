@@ -2,6 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch Client",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm run dev",
+      "cwd": "${workspaceFolder}/front-end/"
+    },
+    {
       "name": "Launch Server",
       "type": "debugpy",
       "request": "launch",
@@ -10,13 +17,6 @@
       "args": ["dev", "app/main.py"],
       "python": "${workspaceFolder}/services/server/.venv/bin/python",
       "cwd": "${workspaceFolder}/services/server"
-    },
-    {
-      "name": "Launch Client",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "pnpm run dev",
-      "cwd": "${workspaceFolder}/front-end/"
     }
   ]
 }

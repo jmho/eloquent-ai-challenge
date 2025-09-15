@@ -2,8 +2,8 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.biome": "explicit",
-    "source.organizeImports.biome": "explicit"
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
   },
   "[css]": {
     "editor.defaultFormatter": "bradlc.vscode-tailwindcss"
