@@ -6,4 +6,4 @@
 /build/
 
 .env
-/app/generated
+/app/generated/db

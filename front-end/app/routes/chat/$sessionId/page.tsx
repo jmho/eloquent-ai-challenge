@@ -5,6 +5,7 @@ import {
   generateChatTitleApiV1GenerateTitlePost,
   type ChatMessage as ApiChatMessage,
 } from "~/generated/api";
+import { APIClient } from "~/lib/api.server";
 import type { Route } from "../$sessionId/+types/page";
 import { ChatErrorBoundary } from "../../../components/ui/error-boundary";
 import { SidebarTrigger } from "../../../components/ui/sidebar";
@@ -122,6 +123,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       const needsTitle = !chatSession.title;
 
       const chatPromise = chatCompletionApiV1ChatPost({
+        client: APIClient,
         body: {
           message,
           conversation_history: conversationHistory,
@@ -129,7 +131,10 @@ export async function action({ params, request }: Route.ActionArgs) {
       });
 
       const titlePromise = needsTitle
-        ? generateChatTitleApiV1GenerateTitlePost({ body: { text: message } })
+        ? generateChatTitleApiV1GenerateTitlePost({
+            client: APIClient,
+            body: { text: message },
+          })
         : null;
 
       const [chatResult, titleResult] = await Promise.allSettled([

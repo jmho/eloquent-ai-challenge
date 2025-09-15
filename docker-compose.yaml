@@ -1,0 +1,82 @@
+services:
+  # Database migration service (runs once)
+  migrate:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+      target: migrator
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"    # run once and exit
+    networks:
+      - app-network
+
+  # Frontend Service (React Router)
+  frontend:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+      target: app
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        # Wait until the migration job has finished successfully
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./services/server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    env_file:
+      - .env
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Database (PostgreSQL)
+  database:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

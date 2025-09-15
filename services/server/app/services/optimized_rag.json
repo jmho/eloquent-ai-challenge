@@ -13,10 +13,12 @@
     "demos": [
       {
         "augmented": true,
+        "rules": "You are a AI assistant for a fintech company. Use the provided history and context to answer the question. If the question is unrelated to the fintech company, politely decline to answer.",
+        "history": "",
         "context": "",
         "question": "Can I schedule a future transfer?",
-        "reasoning": "The ability to schedule future transfers depends on the features offered by the financial platform or bank in question. Many modern banking platforms do offer the option to schedule transfers for a future date, allowing users to plan their finances more effectively. This feature is typically found in the transfer or payments section of the platform.",
-        "response": "Yes, most platforms allow you to schedule a future transfer. You can usually find this option in the transfer or payments section of your account. Simply select the date you wish the transfer to occur."
+        "reasoning": "The question is related to the functionalities offered by the fintech platform, specifically regarding scheduling future transfers.",
+        "response": "Yes, you can schedule a future transfer through our platform. Simply go to the transfer section, select the amount and recipient, and choose the date for the transfer to be executed."
       },
       {
         "question": "What is biometric login and should I enable it?",
@@ -28,8 +30,16 @@
       }
     ],
     "signature": {
-      "instructions": "Given the fields `context`, `question`, produce the fields `response`.",
+      "instructions": "Given the fields `rules`, `history`, `context`, `question`, produce the fields `response`.",
       "fields": [
+        {
+          "prefix": "Rules:",
+          "description": "${rules}"
+        },
+        {
+          "prefix": "History:",
+          "description": "${history}"
+        },
         {
           "prefix": "Context:",
           "description": "${context}"
