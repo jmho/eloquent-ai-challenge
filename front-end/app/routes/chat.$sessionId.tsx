@@ -275,8 +275,13 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                <div className="text-xs mt-1 opacity-70">
-                  {message.created_at.toLocaleTimeString()}
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-xs opacity-70">
+                    {message.created_at.toLocaleTimeString()}
+                  </div>
+                  {message.role === "assistant" && message.reasoning && (
+                    <ReasoningPopover reasoning={message.reasoning} />
+                  )}
                 </div>
               </div>
             </div>

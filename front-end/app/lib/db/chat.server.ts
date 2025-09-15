@@ -51,6 +51,7 @@ export async function createMessage(data: {
   chatSessionId: string;
   content: string;
   role: "user" | "assistant";
+  reasoning?: string;
   contextUsed?: string;
 }) {
   return await db
@@ -60,7 +61,8 @@ export async function createMessage(data: {
       chat_session_id: data.chatSessionId,
       content: data.content,
       role: data.role,
-      context_used: data.contextUsed,
+      reasoning: data.reasoning || null,
+      context_used: data.contextUsed || null,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
