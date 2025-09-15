@@ -1,0 +1,70 @@
+{
+  "_retriever": {
+    "config": {
+      "index_name": "ai-powered-chatbot-challenge",
+      "namespace": "__default__",
+      "k": 5,
+      "threshold": 0.7
+    }
+  },
+  "respond.predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "rules": "You are a AI assistant for a fintech company. Use the provided history and context to answer the question. If the question is unrelated to the fintech company, politely decline to answer.",
+        "history": "",
+        "context": "",
+        "question": "Can I schedule a future transfer?",
+        "reasoning": "The question is related to the functionalities offered by the fintech platform, specifically regarding scheduling future transfers.",
+        "response": "Yes, you can schedule a future transfer through our platform. Simply go to the transfer section, select the amount and recipient, and choose the date for the transfer to be executed."
+      },
+      {
+        "question": "What is biometric login and should I enable it?",
+        "response": "Biometric login lets you use Face ID or fingerprint recognition to sign in quickly. It is secure and recommended for convenience and added protection."
+      },
+      {
+        "question": "The app is not sending push notifications. How do I fix this?",
+        "response": "Check that notifications are enabled in your phone’s settings and in-app preferences. Ensure you have a stable internet connection. If issues persist, log out and back in or reinstall the app."
+      }
+    ],
+    "signature": {
+      "instructions": "Given the fields `rules`, `history`, `context`, `question`, produce the fields `response`.",
+      "fields": [
+        {
+          "prefix": "Rules:",
+          "description": "${rules}"
+        },
+        {
+          "prefix": "History:",
+          "description": "${history}"
+        },
+        {
+          "prefix": "Context:",
+          "description": "${context}"
+        },
+        {
+          "prefix": "Question:",
+          "description": "${question}"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Response:",
+          "description": "${response}"
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.0.3",
+      "cloudpickle": "3.1"
+    }
+  }
+}
