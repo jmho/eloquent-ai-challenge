@@ -1,15 +1,19 @@
-import type { Route } from "./+types/chat.$sessionId";
+import { useEffect, useRef } from "react";
+import { data, redirect, useFetcher } from "react-router";
+import {
+  chatCompletionApiV1ChatPost,
+  generateChatTitleApiV1GenerateTitlePost,
+} from "~/generated/api";
+import {
+  createChatSession,
+  createMessage,
+  getChatMessages,
+  getChatSession,
+  updateChatSessionTitle,
+} from "../lib/db/chat.server";
 import { requireSession } from "../lib/session/auth.server";
 import { commitSession } from "../lib/session/cookie.server";
-import {
-  getChatSession,
-  getChatMessages,
-  createMessage,
-  updateChatSessionTitle,
-  createChatSession,
-} from "../lib/db/chat.server";
-import { redirect, Form, data } from "react-router";
-import { useState, useEffect, useRef } from "react";
+import type { Route } from "./+types/chat.$sessionId";
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   const { sessionId } = params;
@@ -87,39 +91,44 @@ export async function action({ params, request }: Route.ActionArgs) {
 
     // Call AI service
     try {
-      const response = await fetch(
-        `${process.env.AI_SERVICE_URL || "http://localhost:8000"}/api/v1/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      const res = await Promise.allSettled([
+        chatCompletionApiV1ChatPost({
+          body: {
             message,
-            conversation_history: [], // TODO: Add conversation history
-          }),
-        }
-      );
+          },
+        }),
+        generateChatTitleApiV1GenerateTitlePost({ body: { text: message } }),
+      ]);
 
-      if (!response.ok) {
-        throw new Error("AI service error");
+      const chatCompletionResponse = res[0];
+      const titleGenerationResponse = res[1];
+
+      if (chatCompletionResponse.status === "rejected") {
+        throw chatCompletionResponse.reason;
       }
 
-      const aiResponse = await response.json();
+      if (titleGenerationResponse.status === "rejected") {
+        throw titleGenerationResponse.reason;
+      }
+
+      const responseData = chatCompletionResponse.value.data;
+      const titleData = titleGenerationResponse.value.data;
+
+      if (!responseData || !titleData) {
+        throw new Error("Missing response from AI service");
+      }
 
       // Save AI response
       await createMessage({
         chatSessionId: actualSessionId,
-        content: aiResponse.response,
+        content: responseData.response,
         role: "assistant",
-        contextUsed: JSON.stringify(aiResponse.context_used),
+        contextUsed: JSON.stringify(responseData.reasoning),
       });
 
       // Update session title if it's the first message
       if (!chatSession.title) {
-        const title =
-          message.length > 50 ? message.substring(0, 50) + "..." : message;
-        await updateChatSessionTitle(actualSessionId, title);
+        await updateChatSessionTitle(actualSessionId, titleData.title);
       }
     } catch (error) {
       console.error("AI service error:", error);
@@ -150,9 +159,11 @@ export async function action({ params, request }: Route.ActionArgs) {
   return { error: "Invalid intent" };
 }
 
-export default function ChatSession({ loaderData }: Route.ComponentProps) {
+export default function ChatSession({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   const { chatSession, messages, isNewSession } = loaderData;
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -164,12 +175,16 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
     scrollToBottom();
   }, [messages]);
 
+  const fetcher = useFetcher();
+
+  const isSubmitting = fetcher.state === "submitting";
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <h1 className="text-xl font-semibold text-gray-900">
-          {isNewSession ? "New Chat" : (chatSession.title || "New Chat")}
+          {isNewSession ? "New Chat" : chatSession.title || "New Chat"}
         </h1>
       </div>
 
@@ -190,9 +205,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
                     : "bg-white text-gray-900 border border-gray-200"
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">
-                  {message.content}
-                </p>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 <div className="text-xs mt-1 opacity-70">
                   {message.created_at.toLocaleTimeString()}
                 </div>
@@ -206,17 +219,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       {/* Message input */}
       <div className="bg-white border-t border-gray-200 px-6 py-4">
         <div className="max-w-3xl mx-auto">
-          <Form
-            ref={formRef}
-            method="post"
-            onSubmit={(e) => {
-              setIsSubmitting(true);
-              // Reset form after a delay to prevent double submission
-              setTimeout(() => {
-                formRef.current?.reset();
-              }, 100);
-            }}
-          >
+          <fetcher.Form ref={formRef} method="post">
             <input type="hidden" name="intent" value="send-message" />
             <div className="flex gap-3">
               <input
@@ -235,7 +238,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
                 {isSubmitting ? "Sending..." : "Send"}
               </button>
             </div>
-          </Form>
+          </fetcher.Form>
         </div>
       </div>
     </div>
