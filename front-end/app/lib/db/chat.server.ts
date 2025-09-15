@@ -32,7 +32,11 @@ export async function getChatSession(sessionId: string, userId: string) {
     .executeTakeFirst();
 }
 
-export async function getChatMessages(chatSessionId: string, beforeMessageId?: string, limit: number = 10) {
+export async function getChatMessages(
+  chatSessionId: string,
+  beforeMessageId?: string,
+  limit: number = 10
+) {
   let query = db
     .selectFrom("messages")
     .where("chat_session_id", "=", chatSessionId)
@@ -44,7 +48,7 @@ export async function getChatMessages(chatSessionId: string, beforeMessageId?: s
   }
 
   const messages = await query.limit(limit).execute();
-  return messages.reverse(); // Return in ascending order for display
+  return messages;
 }
 
 export async function createMessage(data: {
@@ -71,9 +75,9 @@ export async function createMessage(data: {
 export async function updateChatSessionTitle(sessionId: string, title: string) {
   return await db
     .updateTable("chat_sessions")
-    .set({ 
+    .set({
       title,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
     .where("id", "=", sessionId)
     .returningAll()
