@@ -14,6 +14,7 @@ import {
   createMessage,
   getChatMessages,
   getChatSession,
+  updateChatSessionTimestamp,
   updateChatSessionTitle,
 } from "../lib/db/chat.server";
 import { requireSession } from "../lib/session/auth.server";
@@ -102,6 +103,9 @@ export async function action({ params, request }: Route.ActionArgs) {
       role: "user",
     });
 
+    // Update chat session timestamp for user activity
+    await updateChatSessionTimestamp(actualSessionId);
+
     // Get recent messages for conversation history (last 6 messages = 3 turns)
     const recentMessages = await getChatMessages(actualSessionId, undefined, 6);
     const conversationHistory: ChatMessage[] = recentMessages.map((msg) => ({
@@ -163,6 +167,9 @@ export async function action({ params, request }: Route.ActionArgs) {
         contextUsed: contextsJson,
       });
 
+      // Update chat session timestamp to reflect latest activity
+      await updateChatSessionTimestamp(actualSessionId);
+
       if (titleData) {
         await updateChatSessionTitle(actualSessionId, titleData.title);
       }
@@ -174,6 +181,9 @@ export async function action({ params, request }: Route.ActionArgs) {
           "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
         role: "assistant",
       });
+
+      // Update timestamp even for error responses
+      await updateChatSessionTimestamp(actualSessionId);
     }
 
     return redirect(`/chat/${actualSessionId}`, {
@@ -228,9 +238,15 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (smooth: boolean = true) => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: smooth ? "smooth" : "auto",
+    });
   };
+
+  useEffect(() => {
+    scrollToBottom(false);
+  }, []);
 
   useEffect(() => {
     setAllMessages(initialMessages);
@@ -339,7 +355,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* Message input */}
-      <div className="bg-background border-t px-6 py-4">
+      <div className="shrink-0 bg-background border-t px-6 py-4 sticky bottom-0">
         <div className="max-w-3xl mx-auto">
           <fetcher.Form ref={formRef} method="post">
             <input type="hidden" name="intent" value="send-message" />

@@ -71,8 +71,19 @@ export async function createMessage(data: {
 export async function updateChatSessionTitle(sessionId: string, title: string) {
   return await db
     .updateTable("chat_sessions")
-    .set({ title })
+    .set({ 
+      title,
+      updated_at: new Date().toISOString()
+    })
     .where("id", "=", sessionId)
     .returningAll()
+    .executeTakeFirst();
+}
+
+export async function updateChatSessionTimestamp(sessionId: string) {
+  return await db
+    .updateTable("chat_sessions")
+    .set({ updated_at: new Date().toISOString() })
+    .where("id", "=", sessionId)
     .executeTakeFirst();
 }
