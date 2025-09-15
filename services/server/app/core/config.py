@@ -1,6 +1,7 @@
 from functools import lru_cache
-from pydantic_settings import BaseSettings
 from typing import List
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -17,19 +18,15 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins_str.split(',')]
     
     # OpenAI Settings
-    openai_api_key: str
     openai_model: str = "gpt-4o-mini"
+    openai_api_key: str = ""
     
     # Pinecone Settings
-    pinecone_api_key: str
-    pinecone_index_name: str = "fintech-faqs"
+    pinecone_index_name: str = "ai-powered-chatbot-challenge"
     pinecone_environment: str = "us-east-1"
-    
-    # Embedding Settings
-    embedding_model: str = "all-MiniLM-L6-v2"
+    pinecone_api_key: str = ""
     
     # RAG Settings
-    max_context_length: int = 4000
     similarity_threshold: float = 0.7
     top_k_results: int = 3
     

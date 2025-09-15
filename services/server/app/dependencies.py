@@ -1,5 +1,3 @@
-from fastapi import Depends
-
 from app.services.rag_service import get_rag_service, RAGService
 
 
