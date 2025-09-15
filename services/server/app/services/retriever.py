@@ -1,13 +1,18 @@
-from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
-from typing import Optional
-import dspy
 import logging
+from typing import List, Optional
 
+import dspy
 from app.core.config import settings
+from pinecone import Pinecone, SearchQuery, SearchRerank
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+class SearchResult(BaseModel):
+    id: str
+    score: float
+    text: str
+    category: str
 
 class PineconeRetriever(dspy.Retrieve):
     """
@@ -15,55 +20,49 @@ class PineconeRetriever(dspy.Retrieve):
     Uses SentenceTransformers for embedding generation.
     """
 
-    def __init__(self, index, encoder, k=5, namespace=None, filter=None, threshold=0.7):
+    def __init__(self, k=5, threshold=0.7):
         super().__init__(k=k)
-        self.index = index
-        self.encoder = encoder
-        self.namespace = namespace
-        self.filter = filter
         self.threshold = threshold
-
-    def _embed(self, texts):
-        """Generate embeddings using SentenceTransformers"""
-        if isinstance(texts, str):
-            texts = [texts]
-        return [self.encoder.encode(text).tolist() for text in texts]
+        self.pc = Pinecone(api_key=settings.pinecone_api_key)
+        self.index = self.pc.Index(settings.pinecone_index_name)
 
     def forward(self, query: str, k: Optional[int] = None, **kwargs) -> dspy.Prediction:
         """Retrieve relevant passages from Pinecone"""
         try:
-            qvec = self._embed([query])[0]
-            res = self.index.query(
-                vector=qvec,
-                top_k=k,
-                include_metadata=True,
-                namespace=self.namespace,
-                filter=self.filter,
+            reranked_results = self.index.search(
+                namespace="__default__",
+                query=SearchQuery(
+                    inputs={
+                        'text': query
+                    },
+                    top_k=k or self.k,
+                ),
+                rerank=SearchRerank(
+                    model="bge-reranker-v2-m3",
+                    rank_fields=["text"],
+                ) 
             )
 
-            passages = []
-            contexts = []
+            # Extract hits from the search response
+            response_dict = reranked_results.to_dict()
+            hits = response_dict.get("result", {}).get("hits", [])
+            
+            # Serialize hits into SearchResult objects
+            matches: List[SearchResult] = []
+            for hit in hits:
+                match = SearchResult(
+                    id=hit.get("_id"),
+                    score=hit.get("_score", 0.0),
+                    text=hit.get("fields", {}).get("text", ""),
+                    category=hit.get("fields", {}).get("category", "")
+                )
+                matches.append(match)
 
-            for match in res.matches:
-                if match.score > self.threshold:
-                    md = match.metadata or {}
-                    text = md.get("text") or md.get("answer") or ""
-                    if text:
-                        passages.append(text)
-                        contexts.append(
-                            {
-                                "text": text,
-                                "category": md.get("category", ""),
-                                "question": md.get("question", ""),
-                                "score": match.score,
-                            }
-                        )
+            # Filter results based on similarity threshold
+            filtered_results = [res for res in matches if res.score >= self.threshold]
 
-            # Return DSPy prediction with passages and additional context metadata
-            prediction = dspy.Prediction(passages=passages)
-            prediction.contexts = contexts  # Add context metadata for detailed info
-            return prediction
+            return dspy.Prediction(results=filtered_results)
 
         except Exception as e:
             logger.error(f"Error in PineconeRetriever: {e}")
-            return dspy.Prediction(passages=[], contexts=[])
+            return dspy.Prediction(results=[])
