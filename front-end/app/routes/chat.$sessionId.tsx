@@ -111,31 +111,40 @@ export async function action({ params, request }: Route.ActionArgs) {
 
     // Call AI service
     try {
-      const res = await Promise.allSettled([
-        chatCompletionApiV1ChatPost({
-          body: {
-            message,
-            conversation_history: conversationHistory,
-          },
-        }),
-        generateChatTitleApiV1GenerateTitlePost({ body: { text: message } }),
+      // Only generate title if the chat session doesn't have one
+      const needsTitle = !chatSession.title;
+
+      const chatPromise = chatCompletionApiV1ChatPost({
+        body: {
+          message,
+          conversation_history: conversationHistory,
+        },
+      });
+
+      const titlePromise = needsTitle
+        ? generateChatTitleApiV1GenerateTitlePost({ body: { text: message } })
+        : null;
+
+      const [chatResult, titleResult] = await Promise.allSettled([
+        chatPromise,
+        ...(titlePromise ? [titlePromise] : []),
       ]);
 
-      const chatCompletionResponse = res[0];
-      const titleGenerationResponse = res[1];
-
-      if (chatCompletionResponse.status === "rejected") {
-        throw chatCompletionResponse.reason;
+      if (chatResult.status === "rejected") {
+        throw chatResult.reason;
       }
 
-      if (titleGenerationResponse.status === "rejected") {
-        throw titleGenerationResponse.reason;
+      if (titleResult && titleResult.status === "rejected") {
+        throw titleResult.reason;
       }
 
-      const responseData = chatCompletionResponse.value.data;
-      const titleData = titleGenerationResponse.value.data;
+      const responseData = chatResult.value.data;
+      const titleData =
+        titleResult && titleResult.status === "fulfilled"
+          ? titleResult.value.data
+          : undefined;
 
-      if (!responseData || !titleData) {
+      if (!responseData) {
         throw new Error("Missing response from AI service");
       }
 
@@ -154,8 +163,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         contextUsed: contextsJson,
       });
 
-      // Update session title if it's the first message
-      if (!chatSession.title) {
+      if (titleData) {
         await updateChatSessionTitle(actualSessionId, titleData.title);
       }
     } catch (error) {
