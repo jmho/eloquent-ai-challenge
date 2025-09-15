@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { data, redirect, useFetcher, isRouteErrorResponse } from "react-router";
-import { SidebarTrigger } from "../components/ui/sidebar";
-import { ChatErrorBoundary } from "../components/ui/error-boundary";
-import { ReasoningPopover } from "../components/reasoning-popover";
+import { data, isRouteErrorResponse, redirect, useFetcher } from "react-router";
 import {
   chatCompletionApiV1ChatPost,
   generateChatTitleApiV1GenerateTitlePost,
 } from "~/generated/api";
+import { ReasoningPopover } from "../components/reasoning-popover";
+import { ChatErrorBoundary } from "../components/ui/error-boundary";
+import { SidebarTrigger } from "../components/ui/sidebar";
 import {
   createChatSession,
   createMessage,
@@ -171,6 +171,26 @@ export async function action({ params, request }: Route.ActionArgs) {
   return { error: "Invalid intent" };
 }
 
+export function meta({ loaderData }: Route.MetaArgs) {
+  if (!loaderData) {
+    return [
+      { title: "New Chat" },
+      {
+        name: "description",
+        content: "AI-powered fintech customer support chatbot",
+      },
+    ];
+  }
+  const { chatSession } = loaderData;
+  return [
+    { title: `${chatSession.title || "New Chat"}` },
+    {
+      name: "description",
+      content: "AI-powered fintech customer support chatbot",
+    },
+  ];
+}
+
 export default function ChatSession({ loaderData }: Route.ComponentProps) {
   const {
     chatSession,
@@ -322,13 +342,13 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
 export function ErrorBoundary({ error }: { error: unknown }) {
   if (isRouteErrorResponse(error)) {
     let message = "An error occurred";
-    
+
     if (error.status === 404) {
       message = error.data || "Chat not found";
     } else if (error.status === 403) {
       message = "You don't have permission to access this chat";
     }
-    
+
     const errorObj = new Error(message);
     return <ChatErrorBoundary error={errorObj} />;
   }
