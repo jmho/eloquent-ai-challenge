@@ -1,14 +1,12 @@
 import logging
 from functools import lru_cache
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional
 
 import dspy
 from app.core.config import settings
 from app.services.rag import RAG
 from app.services.retriever import PineconeRetriever
-from pinecone import Pinecone
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +50,6 @@ class RAGService:
 
             # Use DSPy RAG module to generate response
             result = self.rag.forward(enhanced_question)
-            
-            
             
             if not result.contexts:
                 return RagServiceResponse(
