@@ -1,5 +1,6 @@
-import type { Route } from "./+types/chat-layout";
-import { Outlet, Link, data } from "react-router";
+import { authkitLoader } from "@workos-inc/authkit-react-router";
+import { LogOut, MessageSquare, Plus } from "lucide-react";
+import { Link, Outlet, data } from "react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,13 +8,27 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import {
-  requireSession,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+} from "../components/ui/sidebar";
+import { getChatSessions } from "../lib/db/chat.server";
+import {
   authenticateWithMigration,
+  requireSession,
 } from "../lib/session/auth.server";
 import { commitSession } from "../lib/session/cookie.server";
-import { authkitLoader } from "@workos-inc/authkit-react-router";
-import { getChatSessions } from "../lib/db/chat.server";
-import { LogOut } from "lucide-react";
+import type { Route } from "./+types/chat-layout";
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { request } = args;
@@ -65,105 +80,105 @@ export default function ChatLayout({ loaderData }: Route.ComponentProps) {
   const { user, chatSessions } = loaderData;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-68 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <Link
-            to="/chat/new"
-            className="block w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center"
-          >
-            New Chat
-          </Link>
-        </div>
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link to="/chat/new">
+                  <Plus className="size-4" />
+                  <span>New Chat</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <h2 className="text-sm font-medium text-gray-500 mb-3">
-            Recent Chats
-          </h2>
-          <div className="space-y-2">
-            {chatSessions.map((session) => (
-              <Link
-                key={session.id}
-                to={`/chat/${session.id}`}
-                className="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200"
-              >
-                <div className="font-medium text-sm text-gray-900 truncate">
-                  {session.title || "Untitled Chat"}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {session.updated_at.toLocaleDateString()}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {chatSessions.map((session) => (
+                  <SidebarMenuItem key={session.id}>
+                    <SidebarMenuButton asChild>
+                      <Link to={`/chat/${session.id}`}>
+                        <MessageSquare className="size-4" />
+                        <span className="truncate">
+                          {session.title || "Untitled Chat"}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-        {/* User Profile Section */}
-        <div className="p-4 border-t border-gray-200">
+        <SidebarFooter>
           {user.workos_id ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-full flex gap-2 items-center rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {user.email?.[0]?.toUpperCase() || "U"}
-                    </span>
-                  </div>
-
-                  <div className="flex-1 text-left">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {user.email || "User"}
-                    </div>
-                    <div className="text-xs text-gray-500">Logged in</div>
-                  </div>
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size="lg"
+                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    >
+                      <div className="bg-background aspect-square size-8 rounded-lg flex items-center justify-center">
+                        <span className="text-shadow-sidebar-primary text-xs font-medium">
+                          {user.email?.[0]?.toUpperCase() || "U"}
+                        </span>
+                      </div>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">
+                          {user.email || "User"}
+                        </span>
+                        <span className="truncate text-xs">Logged in</span>
+                      </div>
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                    side="bottom"
+                    align="end"
+                    sideOffset={4}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-56 bg-white border border-gray-200 shadow-lg cursor-pointer hover:bg-gray-100"
-              >
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/auth/logout"
-                    className="w-full text-left text-black"
-                  >
-                    <LogOut />
-                    Log out
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <DropdownMenuItem asChild>
+                      <Link to="/auth/logout">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Log out
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            </SidebarMenu>
           ) : (
-            <div className="text-center">
-              <Link
-                to="/auth/login"
-                className="inline-block w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-              >
-                Sign in
-              </Link>
-            </div>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  className="hover:bg-blue-700 bg-blue-600 hover:text-white text-white"
+                  asChild
+                >
+                  <Link to="/auth/login">
+                    <span className="w-full text-center">Sign in</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           )}
-        </div>
-      </div>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
 
-      {/* Main content */}
-      <div className="flex-1">
-        <Outlet />
-      </div>
-    </div>
+      <SidebarInset>
+        <div className="flex flex-1 flex-col">
+          <Outlet />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

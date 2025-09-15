@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { data, redirect, useFetcher } from "react-router";
+import { SidebarTrigger } from "../components/ui/sidebar";
 import {
   chatCompletionApiV1ChatPost,
   generateChatTitleApiV1GenerateTitlePost,
@@ -235,11 +236,12 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">
+      <header className="flex h-16 shrink-0 items-center gap-2 bg-background border-b px-4">
+        <SidebarTrigger className="-ml-1" />
+        <h1 className="text-xl font-semibold">
           {isNewSession ? "New Chat" : chatSession.title || "New Chat"}
         </h1>
-      </div>
+      </header>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -247,7 +249,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
           {hasMore && (
             <div ref={loadMoreTriggerRef} className="flex justify-center py-4">
               {loadMoreFetcher.state === "loading" ? (
-                <div className="text-gray-500 text-sm">
+                <div className="text-muted-foreground text-sm">
                   Loading more messages...
                 </div>
               ) : (
@@ -265,8 +267,8 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
               <div
                 className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                   message.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-900 border border-gray-200"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -281,7 +283,7 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* Message input */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4">
+      <div className="bg-background border-t px-6 py-4">
         <div className="max-w-3xl mx-auto">
           <fetcher.Form ref={formRef} method="post">
             <input type="hidden" name="intent" value="send-message" />
@@ -290,14 +292,14 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
                 type="text"
                 name="message"
                 placeholder="Type your message..."
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:border-blue-500"
+                className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={isSubmitting}
                 required
               />
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? "Sending..." : "Send"}
               </button>
