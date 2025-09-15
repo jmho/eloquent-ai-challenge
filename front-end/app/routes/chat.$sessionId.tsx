@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { data, redirect, useFetcher } from "react-router";
 import {
   chatCompletionApiV1ChatPost,
@@ -18,6 +18,8 @@ import type { Route } from "./+types/chat.$sessionId";
 export async function loader({ params, request }: Route.LoaderArgs) {
   const { sessionId } = params;
   const { session, userId } = await requireSession(request);
+  const url = new URL(request.url);
+  const beforeMessageId = url.searchParams.get("before");
 
   // Handle the special "new" session ID
   if (sessionId === "new") {
@@ -26,6 +28,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         chatSession: { id: "new", title: null, user_id: userId },
         messages: [],
         isNewSession: true,
+        hasMore: false,
       },
       {
         headers: {
@@ -40,13 +43,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw new Response("Chat session not found", { status: 404 });
   }
 
-  const messages = await getChatMessages(sessionId);
+  const messages = await getChatMessages(
+    sessionId,
+    beforeMessageId || undefined
+  );
+  const hasMore = messages.length === 10; // If we got the full limit, there might be more
 
   return data(
     {
       chatSession,
       messages,
       isNewSession: false,
+      hasMore,
     },
     {
       headers: {
@@ -160,8 +168,16 @@ export async function action({ params, request }: Route.ActionArgs) {
 }
 
 export default function ChatSession({ loaderData }: Route.ComponentProps) {
-  const { chatSession, messages, isNewSession } = loaderData;
+  const {
+    chatSession,
+    messages: initialMessages,
+    isNewSession,
+    hasMore: initialHasMore,
+  } = loaderData;
+  const [allMessages, setAllMessages] = useState(initialMessages);
+  const [hasMore, setHasMore] = useState(initialHasMore);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const scrollToBottom = () => {
@@ -169,12 +185,52 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
   };
 
   useEffect(() => {
+    setAllMessages(initialMessages);
+    setHasMore(initialHasMore);
+  }, [initialMessages, initialHasMore]);
+
+  useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [allMessages]);
 
   const fetcher = useFetcher();
+  const loadMoreFetcher = useFetcher();
 
   const isSubmitting = fetcher.state === "submitting";
+
+  useEffect(() => {
+    if (loadMoreFetcher.data && loadMoreFetcher.state === "idle") {
+      const newMessages = loadMoreFetcher.data.messages;
+      const newHasMore = loadMoreFetcher.data.hasMore;
+
+      setAllMessages((prev) => [...newMessages, ...prev]);
+      setHasMore(newHasMore);
+    }
+  }, [loadMoreFetcher.data, loadMoreFetcher.state]);
+
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          loadMoreFetcher.state === "idle" &&
+          allMessages.length > 0
+        ) {
+          const oldestMessageId = allMessages[0].id;
+          loadMoreFetcher.load(
+            `/chat/${chatSession.id}?before=${oldestMessageId}`
+          );
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [hasMore, loadMoreFetcher, allMessages, chatSession.id]);
 
   return (
     <div className="flex flex-col h-full">
@@ -188,7 +244,18 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
-          {messages.map((message) => (
+          {hasMore && (
+            <div ref={loadMoreTriggerRef} className="flex justify-center py-4">
+              {loadMoreFetcher.state === "loading" ? (
+                <div className="text-gray-500 text-sm">
+                  Loading more messages...
+                </div>
+              ) : (
+                <div className="h-1" />
+              )}
+            </div>
+          )}
+          {allMessages.map((message) => (
             <div
               key={message.id}
               className={`flex ${

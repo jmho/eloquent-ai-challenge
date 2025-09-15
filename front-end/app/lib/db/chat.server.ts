@@ -8,7 +8,7 @@ export async function createChatSession(userId: string, title?: string) {
       id: uuidv7(),
       updated_at: new Date().toISOString(),
       user_id: userId,
-      title: title || "New Chat",
+      title: title || null,
     })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -32,13 +32,19 @@ export async function getChatSession(sessionId: string, userId: string) {
     .executeTakeFirst();
 }
 
-export async function getChatMessages(chatSessionId: string) {
-  return await db
+export async function getChatMessages(chatSessionId: string, beforeMessageId?: string, limit: number = 10) {
+  let query = db
     .selectFrom("messages")
     .where("chat_session_id", "=", chatSessionId)
     .selectAll()
-    .orderBy("created_at", "asc")
-    .execute();
+    .orderBy("id", "desc");
+
+  if (beforeMessageId) {
+    query = query.where("id", "<", beforeMessageId);
+  }
+
+  const messages = await query.limit(limit).execute();
+  return messages.reverse(); // Return in ascending order for display
 }
 
 export async function createMessage(data: {
