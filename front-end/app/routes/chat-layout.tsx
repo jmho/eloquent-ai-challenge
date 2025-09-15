@@ -127,7 +127,7 @@ export default function ChatLayout({ loaderData }: Route.ComponentProps) {
                       size="lg"
                       className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                     >
-                      <div className="bg-background aspect-square size-8 rounded-lg flex items-center justify-center">
+                      <div className="bg-background aspect-square size-8 rounded-lg flex items-center justify-center border-gray-300 border">
                         <span className="text-shadow-sidebar-primary text-xs font-medium">
                           {user.email?.[0]?.toUpperCase() || "U"}
                         </span>
