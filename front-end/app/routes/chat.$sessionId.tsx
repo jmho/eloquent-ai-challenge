@@ -250,6 +250,13 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
 
   const isSubmitting = fetcher.state === "submitting";
 
+  // Reset form when submission is complete
+  useEffect(() => {
+    if (fetcher.state === "idle" && formRef.current) {
+      formRef.current.reset();
+    }
+  }, [fetcher.state]);
+
   useEffect(() => {
     if (loadMoreFetcher.data && loadMoreFetcher.state === "idle") {
       const newMessages = loadMoreFetcher.data.messages;
