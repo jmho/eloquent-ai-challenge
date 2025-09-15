@@ -53,7 +53,8 @@ model Message {
   chatSessionId String   @db.Uuid @map("chat_session_id")
   content       String
   role          Role
-  contextUsed   String?  @map("context_used")
+  reasoning     String? // Optional because this table is also used for user messages
+  contextUsed   String?  @map("context_used") // Sources and context used
   createdAt     DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
 
   // Relations

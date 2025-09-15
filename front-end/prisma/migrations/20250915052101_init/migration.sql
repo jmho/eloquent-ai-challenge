@@ -31,6 +31,7 @@ CREATE TABLE "public"."messages" (
     "chat_session_id" UUID NOT NULL,
     "content" TEXT NOT NULL,
     "role" "public"."Role" NOT NULL,
+    "reasoning" TEXT NOT NULL,
     "context_used" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
