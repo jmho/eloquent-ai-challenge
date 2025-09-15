@@ -17,7 +17,7 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
+  id          String   @id @db.Uuid
   sessionId   String?  @unique @map("session_id") // For anonymous users
   workosId    String?  @unique @map("workos_id") // For authenticated users
   email       String?  @unique // From WorkOS
@@ -32,7 +32,7 @@ model User {
 }
 
 model ChatSession {
-  id        String   @id @default(cuid())
+  id        String   @id @db.Uuid
   userId    String   @map("user_id")
   title     String?
   createdAt DateTime @default(now()) @map("created_at")
@@ -46,7 +46,7 @@ model ChatSession {
 }
 
 model Message {
-  id            String   @id @default(cuid())
+  id            String   @id @db.Uuid
   chatSessionId String   @map("chat_session_id")
   content       String
   role          Role

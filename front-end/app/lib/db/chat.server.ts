@@ -1,10 +1,11 @@
-import { createId, db } from "../db.server";
+import { v7 as uuidv7 } from "uuid";
+import { db } from "../db.server";
 
 export async function createChatSession(userId: string, title?: string) {
   return await db
     .insertInto("chat_sessions")
     .values({
-      id: createId(),
+      id: uuidv7(),
       updated_at: new Date().toISOString(),
       user_id: userId,
       title: title || "New Chat",
@@ -49,7 +50,7 @@ export async function createMessage(data: {
   return await db
     .insertInto("messages")
     .values({
-      id: createId(),
+      id: uuidv7(),
       chat_session_id: data.chatSessionId,
       content: data.content,
       role: data.role,

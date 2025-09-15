@@ -1,5 +1,6 @@
+import { v7 as uuidv7 } from "uuid";
+import { db } from "../db.server";
 import { getSession } from "./cookie.server";
-import { db, createId } from "../db.server";
 
 export async function requireSession(request: Request) {
   const session = await getSession(request.headers.get("Cookie"));
@@ -41,11 +42,11 @@ export async function requireSession(request: Request) {
   }
 
   // Create new anonymous session
-  const newSessionId = createId();
+  const newSessionId = uuidv7();
   const user = await db
     .insertInto("users")
     .values({
-      id: createId(),
+      id: uuidv7(),
       session_id: newSessionId,
       is_anonymous: true,
       updated_at: new Date().toISOString(),
@@ -78,7 +79,7 @@ export async function getOrCreateWorkOSUser(
     user = await db
       .insertInto("users")
       .values({
-        id: createId(),
+        id: uuidv7(),
         workos_id: workosUserId,
         email: email,
         is_anonymous: false,
@@ -127,7 +128,7 @@ export async function migrateAnonymousUserToAuthenticated(
     // Mark the anonymous user as migrated (keep for audit trail)
     await trx
       .updateTable("users")
-      .set({ 
+      .set({
         updated_at: new Date().toISOString(),
       })
       .where("id", "=", anonymousUserId)
@@ -144,10 +145,10 @@ export async function authenticateWithMigration(
   // Get current anonymous session if exists
   const session = await getSession(request.headers.get("Cookie"));
   const currentUserId = session.get("userId");
-  
+
   // Get or create authenticated user
   const authenticatedUser = await getOrCreateWorkOSUser(workosUserId, email);
-  
+
   // If there was an anonymous user, migrate their data
   if (currentUserId && currentUserId !== authenticatedUser.id) {
     const anonymousUser = await db
@@ -156,11 +157,16 @@ export async function authenticateWithMigration(
       .where("is_anonymous", "=", true)
       .selectAll()
       .executeTakeFirst();
-    
+
     if (anonymousUser) {
       try {
-        console.log(`Migrating anonymous user ${currentUserId} to authenticated user ${authenticatedUser.id}`);
-        await migrateAnonymousUserToAuthenticated(currentUserId, authenticatedUser.id);
+        console.log(
+          `Migrating anonymous user ${currentUserId} to authenticated user ${authenticatedUser.id}`
+        );
+        await migrateAnonymousUserToAuthenticated(
+          currentUserId,
+          authenticatedUser.id
+        );
         console.log(`Successfully migrated user data`);
       } catch (error) {
         console.error("Migration failed:", error);
@@ -169,11 +175,11 @@ export async function authenticateWithMigration(
       }
     }
   }
-  
+
   // Update session with authenticated user data
   session.set("userId", authenticatedUser.id);
   session.unset("sessionId"); // No longer needed for authenticated users
-  
+
   return {
     session,
     user: authenticatedUser,

@@ -159,10 +159,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   return { error: "Invalid intent" };
 }
 
-export default function ChatSession({
-  loaderData,
-  actionData,
-}: Route.ComponentProps) {
+export default function ChatSession({ loaderData }: Route.ComponentProps) {
   const { chatSession, messages, isNewSession } = loaderData;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
