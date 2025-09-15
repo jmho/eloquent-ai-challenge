@@ -417,7 +417,7 @@ if __name__ == "__main__":
             )
             
             # Display test results
-            print(f"\n🧪 Model Test Results")
+            print("\n🧪 Model Test Results")
             print(f"Query: {test_results['query']}")
             print(f"Response: {test_results['response']}")
             print(f"Reasoning: {test_results['reasoning']}")
@@ -425,7 +425,7 @@ if __name__ == "__main__":
             print(f"Cost: ${test_results['cost_usd']:.4f}")
             
             if test_results['contexts']:
-                print(f"\n📄 Retrieved Contexts:")
+                print("\n📄 Retrieved Contexts:")
                 for i, ctx in enumerate(test_results['contexts'], 1):
                     print(f"  {i}. [Score: {ctx['score']:.3f}] {ctx['text']}")
             
@@ -446,7 +446,7 @@ if __name__ == "__main__":
             )
             
             # Display results
-            print(f"\n🎉 Optimization Complete!")
+            print("\n🎉 Optimization Complete!")
             print(f"Baseline Score: {results['baseline_score']['average_score']:.3f}")
             print(f"Optimized Score: {results['optimized_score']['average_score']:.3f}")
             print(f"Improvement: {results['improvement']:.3f}")
