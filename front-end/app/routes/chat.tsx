@@ -3,7 +3,7 @@ import type { Route } from "./+types/chat";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Eloquent AI Chatbot: Chat" },
+    { title: "Fintech AI Chatbot: Chat" },
     {
       name: "description",
       content: "AI-powered fintech customer support chatbot",
