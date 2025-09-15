@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { data, redirect, useFetcher } from "react-router";
+import { data, redirect, useFetcher, isRouteErrorResponse } from "react-router";
 import { SidebarTrigger } from "../components/ui/sidebar";
+import { ChatErrorBoundary } from "../components/ui/error-boundary";
+import { ReasoningPopover } from "../components/reasoning-popover";
 import {
   chatCompletionApiV1ChatPost,
   generateChatTitleApiV1GenerateTitlePost,
@@ -41,7 +43,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const chatSession = await getChatSession(sessionId, userId);
   if (!chatSession) {
-    throw new Response("Chat session not found", { status: 404 });
+    throw data("Chat not found", { status: 404 });
   }
 
   const messages = await getChatMessages(
@@ -132,7 +134,8 @@ export async function action({ params, request }: Route.ActionArgs) {
         chatSessionId: actualSessionId,
         content: responseData.response,
         role: "assistant",
-        contextUsed: JSON.stringify(responseData.reasoning),
+        reasoning: responseData.reasoning,
+        // contextUsed will be added later for sources
       });
 
       // Update session title if it's the first message
@@ -309,4 +312,26 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       </div>
     </div>
   );
+}
+
+export function ErrorBoundary({ error }: { error: unknown }) {
+  if (isRouteErrorResponse(error)) {
+    let message = "An error occurred";
+    
+    if (error.status === 404) {
+      message = error.data || "Chat not found";
+    } else if (error.status === 403) {
+      message = "You don't have permission to access this chat";
+    }
+    
+    const errorObj = new Error(message);
+    return <ChatErrorBoundary error={errorObj} />;
+  }
+
+  if (error instanceof Error) {
+    return <ChatErrorBoundary error={error} />;
+  }
+
+  const unknownError = new Error("An unknown error occurred");
+  return <ChatErrorBoundary error={unknownError} />;
 }
