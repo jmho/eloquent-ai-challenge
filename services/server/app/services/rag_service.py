@@ -1,5 +1,6 @@
 import logging
 from functools import lru_cache
+from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 import dspy
@@ -29,7 +30,20 @@ class RAGService:
             threshold=settings.similarity_threshold
         )
 
-        self.rag = RAG(self.retriever)
+        # Check for optimized model in services directory
+        optimized_model_path = Path("services/optimized_rag.json")
+        if optimized_model_path.exists():
+            try:
+                logger.info(f"Loading optimized RAG model from {optimized_model_path}")
+                self.rag = RAG(self.retriever)
+                self.rag.load(str(optimized_model_path))
+                logger.info("Successfully loaded optimized RAG model")
+            except Exception as e:
+                logger.error(f"Failed to load optimized model: {e}. Using default RAG.")
+                self.rag = RAG(self.retriever)
+        else:
+            logger.info("No optimized model found. Using default RAG initialization.")
+            self.rag = RAG(self.retriever)
 
 
     async def generate_response(
