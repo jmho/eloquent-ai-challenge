@@ -1,11 +1,12 @@
 import { Brain, FileText, Info } from "lucide-react";
+import type { SearchResult } from "~/generated/api";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface ReasoningPopoverProps {
   reasoning?: string;
-  sources?: Array<{ title: string; url: string; excerpt?: string }>;
+  sources?: SearchResult[];
 }
 
 export function ReasoningPopover({
@@ -66,24 +67,17 @@ export function ReasoningPopover({
               <div className="space-y-3">
                 <h4 className="font-medium text-sm">Sources used</h4>
                 <div className="space-y-2">
-                  {sources.map((source, index) => (
-                    <div key={index} className="border rounded-md p-2">
-                      <div className="font-medium text-sm mb-1">
-                        {source.title}
+                  {sources.map((source) => (
+                    <div key={source.id} className="border rounded-md p-2">
+                      <div className="font-medium text-sm mb-1 flex justify-between items-center">
+                        <span>{source.category || "Knowledge Base"}</span>
+                        <span className="text-xs font-normal bg-muted px-2 py-1 rounded">
+                          Score: {source.score.toFixed(2)}
+                        </span>
                       </div>
-                      {source.excerpt && (
-                        <div className="text-xs text-muted-foreground mb-1">
-                          "{source.excerpt}"
-                        </div>
-                      )}
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {source.url}
-                      </a>
+                      <div className="text-xs text-muted-foreground">
+                        "{source.text.length > 200 ? source.text.substring(0, 200) + '...' : source.text}"
+                      </div>
                     </div>
                   ))}
                 </div>

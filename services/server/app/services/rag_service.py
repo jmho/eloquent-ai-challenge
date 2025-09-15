@@ -6,15 +6,20 @@ from typing import Dict, List, Literal, Optional
 import dspy
 from app.core.config import settings
 from app.services.rag import RAG
-from app.services.retriever import PineconeRetriever
+from app.services.retriever import PineconeRetriever, SearchResult
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
 
 class RagServiceResponse(BaseModel):
     response: str
     reasoning: str
     confidence: float
+    contexts: List[SearchResult]
     status: Literal["success", "error", "no_context"]
 
 class RAGService:
@@ -47,32 +52,23 @@ class RAGService:
 
 
     async def generate_response(
-        self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None
+        self, message: str, conversation_history: Optional[List[ChatMessage]] = None
     ) -> RagServiceResponse:
         """Generate response using DSPy RAG module"""
         try:
             # Prepare the question with conversation history if available
-            enhanced_question = message
+            history_str = ""
             if conversation_history:
                 history_text = "\n".join(
                     [
-                        f"{msg['role']}: {msg['content']}"
-                        for msg in conversation_history[-3:]  # Last 3 messages for context
+                        f"{msg.role}: {msg.content}"
+                        for msg in conversation_history
                     ]
                 )
-                enhanced_question = f"Conversation History:\n{history_text}\n\nCurrent Question: {message}"
+                history_str = f"Conversation History:\n{history_text}\n\n"
 
             # Use DSPy RAG module to generate response
-            result = self.rag.forward(enhanced_question)
-            
-            if not result.contexts:
-                return RagServiceResponse(
-                    response="I apologize, but I don't have specific information about that topic. "
-                    "Please contact our customer support team for assistance.",
-                    reasoning="No relevant context found.",
-                    confidence=0.0,
-                    status="no_context"
-                )
+            result = self.rag.forward(message, history_str)
 
             # Calculate average confidence from context scores
             avg_confidence = (
@@ -85,6 +81,7 @@ class RAGService:
                 response=result.response,
                 reasoning=result.reasoning,
                 confidence=avg_confidence,
+                contexts=result.contexts,
                 status="success"
             )
 
@@ -94,6 +91,7 @@ class RAGService:
                 response="I apologize, but I'm having trouble processing your request right now. ",
                 reasoning="",
                 confidence=0.0,
+                contexts=[],
                 status="error"
             )
             

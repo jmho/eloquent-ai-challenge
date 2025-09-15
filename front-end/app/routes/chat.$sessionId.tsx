@@ -3,7 +3,9 @@ import { data, isRouteErrorResponse, redirect, useFetcher } from "react-router";
 import {
   chatCompletionApiV1ChatPost,
   generateChatTitleApiV1GenerateTitlePost,
+  type ChatMessage,
 } from "~/generated/api";
+import { parseContextUsed } from "~/lib/utils";
 import { ReasoningPopover } from "../components/reasoning-popover";
 import { ChatErrorBoundary } from "../components/ui/error-boundary";
 import { SidebarTrigger } from "../components/ui/sidebar";
@@ -100,12 +102,20 @@ export async function action({ params, request }: Route.ActionArgs) {
       role: "user",
     });
 
+    // Get recent messages for conversation history (last 6 messages = 3 turns)
+    const recentMessages = await getChatMessages(actualSessionId, undefined, 6);
+    const conversationHistory: ChatMessage[] = recentMessages.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+    }));
+
     // Call AI service
     try {
       const res = await Promise.allSettled([
         chatCompletionApiV1ChatPost({
           body: {
             message,
+            conversation_history: conversationHistory,
           },
         }),
         generateChatTitleApiV1GenerateTitlePost({ body: { text: message } }),
@@ -129,13 +139,19 @@ export async function action({ params, request }: Route.ActionArgs) {
         throw new Error("Missing response from AI service");
       }
 
+      // Save contexts as JSON for later parsing in UI
+      const contextsJson =
+        responseData.contexts && responseData.contexts.length > 0
+          ? JSON.stringify(responseData.contexts)
+          : undefined;
+
       // Save AI response
       await createMessage({
         chatSessionId: actualSessionId,
         content: responseData.response,
         role: "assistant",
         reasoning: responseData.reasoning,
-        // contextUsed will be added later for sources
+        contextUsed: contextsJson,
       });
 
       // Update session title if it's the first message
@@ -299,9 +315,13 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
                   <div className="text-xs opacity-70">
                     {message.created_at.toLocaleTimeString()}
                   </div>
-                  {message.role === "assistant" && message.reasoning && (
-                    <ReasoningPopover reasoning={message.reasoning} />
-                  )}
+                  {message.role === "assistant" &&
+                    (message.reasoning || message.context_used) && (
+                      <ReasoningPopover
+                        reasoning={message.reasoning || undefined}
+                        sources={parseContextUsed(message.context_used)}
+                      />
+                    )}
                 </div>
               </div>
             </div>

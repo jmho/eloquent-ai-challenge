@@ -1,8 +1,9 @@
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from app.core.config import settings
 from app.dependencies import get_rag_service_dependency
-from app.services.rag_service import RAGService
+from app.services.rag_service import ChatMessage, RAGService
+from app.services.retriever import SearchResult
 from fastapi import APIRouter, Depends, HTTPException
 from openai import OpenAI
 from pydantic import BaseModel
@@ -12,13 +13,14 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
-    conversation_history: Optional[List[Dict[str, str]]] = []
+    conversation_history: Optional[List[ChatMessage]] = []
 
 
 class ChatResponse(BaseModel):
     response: str
     reasoning: str
     confidence: float
+    contexts: List[SearchResult]
 
 
 @router.post("/chat", response_model=ChatResponse, tags=["chat"])
@@ -39,7 +41,8 @@ async def chat_completion(
         return ChatResponse(
             response=response.response,
             reasoning=response.reasoning,
-            confidence=response.confidence
+            confidence=response.confidence,
+            contexts=response.contexts
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
