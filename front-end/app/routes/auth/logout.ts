@@ -1,6 +1,6 @@
 import { signOut } from "@workos-inc/authkit-react-router";
-import { destroySession, getSession } from "../lib/session/cookie.server";
-import type { Route } from "./+types/auth.logout";
+import { destroySession, getSession } from "../../lib/session/cookie.server";
+import type { Route } from "./+types/logout";
 
 export async function loader({ request }: Route.LoaderArgs) {
   // Clear our session cookie as well

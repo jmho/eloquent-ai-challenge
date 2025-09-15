@@ -3,12 +3,11 @@ import { data, isRouteErrorResponse, redirect, useFetcher } from "react-router";
 import {
   chatCompletionApiV1ChatPost,
   generateChatTitleApiV1GenerateTitlePost,
-  type ChatMessage,
+  type ChatMessage as ApiChatMessage,
 } from "~/generated/api";
-import { parseContextUsed } from "~/lib/utils";
-import { ReasoningPopover } from "../components/reasoning-popover";
-import { ChatErrorBoundary } from "../components/ui/error-boundary";
-import { SidebarTrigger } from "../components/ui/sidebar";
+import type { Route } from "../$sessionId/+types/page";
+import { ChatErrorBoundary } from "../../../components/ui/error-boundary";
+import { SidebarTrigger } from "../../../components/ui/sidebar";
 import {
   createChatSession,
   createMessage,
@@ -16,10 +15,11 @@ import {
   getChatSession,
   updateChatSessionTimestamp,
   updateChatSessionTitle,
-} from "../lib/db/chat.server";
-import { requireSession } from "../lib/session/auth.server";
-import { commitSession } from "../lib/session/cookie.server";
-import type { Route } from "./+types/chat.$sessionId";
+} from "../../../lib/db/chat.server";
+import { requireSession } from "../../../lib/session/auth.server";
+import { commitSession } from "../../../lib/session/cookie.server";
+import { ChatInput } from "./chat-input";
+import { ChatMessage } from "./chat-message";
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   const { sessionId } = params;
@@ -111,7 +111,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
     // Get recent messages for conversation history (last 6 messages = 3 turns)
     const recentMessages = await getChatMessages(actualSessionId, undefined, 6);
-    const conversationHistory: ChatMessage[] = recentMessages.map((msg) => ({
+    const conversationHistory: ApiChatMessage[] = recentMessages.map((msg) => ({
       role: msg.role as "user" | "assistant",
       content: msg.content,
     }));
@@ -237,16 +237,10 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
   } = loaderData;
   const [allMessages, setAllMessages] = useState(initialMessages);
   const [hasMore, setHasMore] = useState(initialHasMore);
-  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    setAllMessages(initialMessages);
-    setHasMore(initialHasMore);
-  }, [initialMessages, initialHasMore]);
-
   const fetcher = useFetcher();
   const loadMoreFetcher = useFetcher();
+  const formRef = useRef<HTMLFormElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 
   const isSubmitting = fetcher.state === "submitting";
 
@@ -256,6 +250,11 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
       formRef.current.reset();
     }
   }, [fetcher.state]);
+
+  useEffect(() => {
+    setAllMessages(initialMessages);
+    setHasMore(initialHasMore);
+  }, [initialMessages, initialHasMore]);
 
   useEffect(() => {
     if (loadMoreFetcher.data && loadMoreFetcher.state === "idle") {
@@ -319,65 +318,16 @@ export default function ChatSession({ loaderData }: Route.ComponentProps) {
             .slice()
             .reverse()
             .map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                  <div className="flex items-center justify-between mt-1">
-                    <div className="text-xs opacity-70">
-                      {message.created_at.toLocaleTimeString()}
-                    </div>
-                    {message.role === "assistant" &&
-                      (message.reasoning || message.context_used) && (
-                        <ReasoningPopover
-                          reasoning={message.reasoning || undefined}
-                          sources={parseContextUsed(message.context_used)}
-                        />
-                      )}
-                  </div>
-                </div>
-              </div>
+              <ChatMessage key={message.id} message={message} />
             ))}
         </div>
       </div>
 
-      {/* Message input */}
-      <div className="shrink-0 bg-background border-t px-6 py-4">
-        <div className="max-w-6xl mx-auto">
-          <fetcher.Form ref={formRef} method="post">
-            <input type="hidden" name="intent" value="send-message" />
-            <div className="flex gap-3">
-              <input
-                type="text"
-                name="message"
-                placeholder="Type your message..."
-                className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                disabled={isSubmitting}
-                required
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSubmitting ? "Sending..." : "Send"}
-              </button>
-            </div>
-          </fetcher.Form>
-        </div>
-      </div>
+      <ChatInput
+        formRef={formRef}
+        isSubmitting={isSubmitting}
+        fetcher={fetcher}
+      />
     </div>
   );
 }

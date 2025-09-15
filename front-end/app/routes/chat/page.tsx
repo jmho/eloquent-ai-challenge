@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { Route } from "./+types/chat";
+import type { Route } from "./+types/page";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -11,7 +11,7 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function Chat() {
+export default function Page() {
   return (
     <div className="flex items-center justify-center h-full">
       <div className="text-center">

@@ -1,12 +1,12 @@
 import { authkitLoader } from "@workos-inc/authkit-react-router";
 import { LogOut, MessageSquare, Plus } from "lucide-react";
-import { Link, Outlet, data } from "react-router";
+import { Link, Outlet, data, useParams } from "react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
+} from "../../components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -21,14 +21,14 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-} from "../components/ui/sidebar";
-import { getChatSessions } from "../lib/db/chat.server";
+} from "../../components/ui/sidebar";
+import { getChatSessions } from "../../lib/db/chat.server";
 import {
   authenticateWithMigration,
   requireSession,
-} from "../lib/session/auth.server";
-import { commitSession } from "../lib/session/cookie.server";
-import type { Route } from "./+types/chat-layout";
+} from "../../lib/session/auth.server";
+import { commitSession } from "../../lib/session/cookie.server";
+import type { Route } from "../chat/+types/layout";
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { request } = args;
@@ -78,6 +78,8 @@ export const loader = async (args: Route.LoaderArgs) => {
 
 export default function ChatLayout({ loaderData }: Route.ComponentProps) {
   const { user, chatSessions } = loaderData;
+  const params = useParams();
+  const currentSessionId = params.sessionId;
 
   return (
     <SidebarProvider>
@@ -85,7 +87,7 @@ export default function ChatLayout({ loaderData }: Route.ComponentProps) {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild isActive={currentSessionId === "new"}>
                 <Link to="/chat/new">
                   <Plus className="size-4" />
                   <span>New Chat</span>
@@ -102,7 +104,10 @@ export default function ChatLayout({ loaderData }: Route.ComponentProps) {
               <SidebarMenu>
                 {chatSessions.map((session) => (
                   <SidebarMenuItem key={session.id}>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={currentSessionId === session.id}
+                    >
                       <Link to={`/chat/${session.id}`}>
                         <MessageSquare className="size-4" />
                         <span className="truncate">

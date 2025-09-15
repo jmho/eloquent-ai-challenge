@@ -1,8 +1,17 @@
 import { Brain, FileText, Info } from "lucide-react";
 import type { SearchResult } from "~/generated/api";
-import { Button } from "./ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Button } from "../../../components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../../components/ui/popover";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../components/ui/tabs";
 
 interface ReasoningPopoverProps {
   reasoning?: string;
@@ -76,7 +85,11 @@ export function ReasoningPopover({
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        "{source.text.length > 200 ? source.text.substring(0, 200) + '...' : source.text}"
+                        "
+                        {source.text.length > 200
+                          ? source.text.substring(0, 200) + "..."
+                          : source.text}
+                        "
                       </div>
                     </div>
                   ))}
